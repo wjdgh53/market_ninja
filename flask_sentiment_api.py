@@ -18,6 +18,8 @@ def indicator():
 
     try:
         result = analyze_technical(symbol)
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
         return jsonify(result)
     except Exception as e:
         traceback.print_exc()
