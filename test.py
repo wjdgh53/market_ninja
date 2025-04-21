@@ -6,7 +6,7 @@ from strategy import calculate_strategies
 sample_input = {
     "symbol": "TSLA",
     "Current_Price": 241.36,
-    "BB_Low": 224.07,
+    "BB_Low": 224.06,
     "BB_High": 292.18,
     "RSI": 43.56,
     "MACD": -9.18,
