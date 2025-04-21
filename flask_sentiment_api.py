@@ -3,6 +3,7 @@ from openai import OpenAI
 import os
 import traceback
 from indicator import analyze_technical
+from strategy import calculate_strategies
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -63,6 +64,32 @@ def analyze():
         "sentiment": score
     })
 
+
+@app.route("/strategies", methods=["POST"])
+def strategies():
+    try:
+        data = request.get_json()
+        symbol = data.get("symbol")
+        if not symbol:
+            return jsonify({"error": "Missing 'symbol'"}), 400
+
+        # 1. 기술 지표 분석
+        indicators = analyze_technical(symbol)
+        if "error" in indicators:
+            return jsonify({"error": indicators["error"]}), 500
+
+        # 2. 전략 계산
+        strategy_results = calculate_strategies(indicators)
+
+        # 3. 결과 리턴
+        return jsonify({
+            "symbol": symbol,
+            "strategies": strategy_results
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5050)
