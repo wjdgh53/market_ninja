@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 import logging
 import datetime
-from services.indicator_service import analyze_technical_indicators
+from services.indicator_service import get_or_calculate_indicators
 from services.strategy_service import calculate_trading_strategies
 
 # 로깅 설정
@@ -22,8 +22,8 @@ def get_strategies():
             
         symbol = data.get("symbol")
         
-        # 1. 기술 지표 분석
-        indicators = analyze_technical_indicators(symbol)
+        # 1. 기술 지표 가져오기 (DB에서 가져오거나 계산)
+        indicators = get_or_calculate_indicators(symbol)
         
         # 에러 확인
         if "error" in indicators:
