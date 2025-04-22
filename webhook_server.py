@@ -5,7 +5,7 @@ import hmac
 import hashlib
 import subprocess
 
-# 로깅 설정
+# 로깅 설정 test
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
