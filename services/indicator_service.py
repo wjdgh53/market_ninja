@@ -2,57 +2,12 @@ import pandas as pd
 import ta
 import requests
 import logging
-import json
-from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
-from config import ALPHA_VANTAGE_API_KEY, INDICATORS_TIMEFRAME, SUPABASE_URL, SUPABASE_KEY
-from supabase import create_client, Client
+from typing import Dict, Any
+from datetime import datetime
+from config import ALPHA_VANTAGE_API_KEY, INDICATORS_TIMEFRAME
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
-
-# Supabase 클라이언트 초기화
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# 데이터베이스 접근 함수
-def get_indicators_from_db(symbol: str) -> Optional[Dict[str, Any]]:
-    """
-    Supabase DB에서 최신 기술 지표 데이터를 가져옵니다.
-    
-    Args:
-        symbol (str): 주식 심볼(티커)
-        
-    Returns:
-        Optional[Dict[str, Any]]: 기술 지표가 포함된 사전 또는 None
-    """
-    try:
-        # DB에서 최신 데이터 조회
-        response = supabase.table('technical_indicators') \
-            .select('*') \
-            .eq('symbol', symbol) \
-            .order('created_at', desc=True) \
-            .limit(1) \
-            .execute()
-            
-        if not response.data:
-            logger.info(f"DB에 {symbol} 데이터가 없습니다.")
-            return None
-            
-        # 데이터가 24시간 이내인지 확인
-        latest_data = response.data[0]
-        data_timestamp = datetime.fromisoformat(latest_data['created_at'].replace('Z', '+00:00'))
-        current_time = datetime.now(data_timestamp.tzinfo)  # 같은 시간대로 맞춤
-        
-        if current_time - data_timestamp > timedelta(hours=24):
-            logger.info(f"{symbol} 데이터가 24시간이 지났습니다. 새로 계산이 필요합니다.")
-            return None
-            
-        logger.info(f"DB에서 {symbol} 데이터를 성공적으로 가져왔습니다.")
-        return latest_data
-        
-    except Exception as e:
-        logger.error(f"DB에서 기술 지표 가져오기 실패 ({symbol}): {str(e)}")
-        return None
 
 def get_historical_data(symbol: str, period: str = "1y") -> pd.DataFrame:
     """
@@ -96,18 +51,18 @@ def get_historical_data(symbol: str, period: str = "1y") -> pd.DataFrame:
         
         # 기간에 따른 데이터 필터링
         if period == "1y" or period == "1년":
-            cutoff_date = datetime.now() - timedelta(days=365)
+            cutoff_date = datetime.now() - pd.Timedelta(days=365)
         elif period == "6m" or period == "6개월":
-            cutoff_date = datetime.now() - timedelta(days=182)
+            cutoff_date = datetime.now() - pd.Timedelta(days=182)
         elif period == "3m" or period == "3개월":
-            cutoff_date = datetime.now() - timedelta(days=91)
+            cutoff_date = datetime.now() - pd.Timedelta(days=91)
         elif period == "1m" or period == "1개월":
-            cutoff_date = datetime.now() - timedelta(days=30)
+            cutoff_date = datetime.now() - pd.Timedelta(days=30)
         elif period == "1w" or period == "1주":
-            cutoff_date = datetime.now() - timedelta(days=7)
+            cutoff_date = datetime.now() - pd.Timedelta(days=7)
         else:
             # 기본값: 1년
-            cutoff_date = datetime.now() - timedelta(days=365)
+            cutoff_date = datetime.now() - pd.Timedelta(days=365)
         
         df = df[df.index >= cutoff_date]
         
@@ -215,7 +170,6 @@ def calculate_technical_indicators(df: pd.DataFrame, symbol: str) -> Dict[str, A
 def analyze_technical_indicators(symbol: str) -> Dict[str, Any]:
     """
     주식의 기술적 지표를 분석합니다.
-    먼저 DB에서 데이터를 확인하고, 없거나 오래된 경우 새로 계산합니다.
     
     Args:
         symbol (str): 주식 심볼(티커)
@@ -224,40 +178,17 @@ def analyze_technical_indicators(symbol: str) -> Dict[str, Any]:
         Dict[str, Any]: 기술적 지표가 포함된 사전
     """
     try:
-        # 1. DB에서 데이터 확인
-        db_data = get_indicators_from_db(symbol)
-        if db_data:
-            logger.info(f"DB에서 {symbol} 데이터를 사용합니다.")
-            return db_data
-            
-        # 2. DB에 데이터가 없거나 오래된 경우 새로 계산
+        # 1. 주가 데이터 가져오기
         logger.info(f"{symbol} 데이터를 새로 계산합니다.")
         df = get_historical_data(symbol)
         if df.empty:
             return {"error": f"No price data found for {symbol}"}
             
-        # 3. 기술적 지표 계산
+        # 2. 기술적 지표 계산
         result = calculate_technical_indicators(df, symbol)
-        
-        # 4. DB에 저장 (n8n에서 처리)
-        # TODO: n8n 웹훅 호출 또는 메시지 큐 사용
         
         return result
         
     except Exception as e:
         logger.error(f"기술 지표 분석 중 오류 발생 ({symbol}): {str(e)}")
         return {"error": str(e)}
-
-def get_or_calculate_indicators(symbol: str) -> Dict[str, Any]:
-    """
-    주식에 대한 기술적 지표를 가져오거나 계산합니다.
-    DB에서 최신 데이터를 먼저 확인하고, 없는 경우에만 계산합니다.
-    백테스팅 등 내부 사용을 위한 함수입니다.
-    
-    Args:
-        symbol (str): 주식 심볼(티커)
-        
-    Returns:
-        Dict[str, Any]: 기술적 지표가 포함된 사전
-    """
-    return analyze_technical_indicators(symbol)

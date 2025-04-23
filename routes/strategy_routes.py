@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 import logging
 import datetime
-from services.indicator_service import get_or_calculate_indicators
-from services.strategy_service import calculate_trading_strategies
+from services.strategy_service import analyze_strategy
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -12,31 +11,30 @@ strategy_bp = Blueprint('strategy', __name__, url_prefix='/strategies')
 
 @strategy_bp.route('', methods=['POST'])
 def get_strategies():
-    """종목에 대한 매매 전략을 계산합니다."""
+    """종목에 대한 매매 전략을 분석합니다."""
     try:
         data = request.get_json()
         
         # 필수 필드 검증
         if not data.get("symbol"):
             return jsonify({"error": "Missing 'symbol' field"}), 400
+        if not data.get("indicators"):
+            return jsonify({"error": "Missing 'indicators' field"}), 400
             
         symbol = data.get("symbol")
+        indicators = data.get("indicators")
         
-        # 1. 기술 지표 가져오기 (DB에서 가져오거나 계산)
-        indicators = get_or_calculate_indicators(symbol)
+        # indicators에 symbol 추가
+        indicators["symbol"] = symbol
         
-        # 에러 확인
-        if "error" in indicators:
-            return jsonify({"error": indicators["error"]}), 500
-            
-        # 2. 전략 계산
-        strategy_results = calculate_trading_strategies(indicators)
+        # 전략 분석
+        strategy_results = analyze_strategy(indicators)
         
-        # 3. 결과 포맷팅 (n8n에서 사용하기 쉬운 형태로)
+        # 결과 포맷팅
         response = {
             "symbol": symbol,
             "timestamp": datetime.datetime.now().isoformat(),
-            "strategies": strategy_results,
+            "analysis": strategy_results,
             "current_price": indicators.get("Current_Price", 0)
         }
         
