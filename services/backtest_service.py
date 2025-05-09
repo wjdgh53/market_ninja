@@ -278,7 +278,7 @@ def calculate_strategy_returns(df: pd.DataFrame, initial_capital: float = 10000.
 
 def run_backtest(symbol: str, strategy: str, period: str = "1y", params: Dict = None) -> Dict[str, Any]:
     """
-    지정된 전략으로 백테스트를 실행합니다.
+    지정된 전략으로 백테스트를 실행합니다.체크
     
     Args:
         symbol (str): 종목 심볼
