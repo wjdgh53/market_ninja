@@ -1,7 +1,35 @@
  * Serving Flask app 'app'
- * Debug mode: off
-2025-04-22 17:02:49,159 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Debug mode: on
+2025-04-22 18:14:36,002 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:5050
- * Running on http://192.168.5.216:5050
-2025-04-22 17:02:49,159 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+ * Running on http://172.20.10.2:5050
+2025-04-22 18:14:36,002 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-22 18:14:36,002 - werkzeug - INFO -  * Restarting with stat
+2025-04-22 18:14:36,427 - werkzeug - WARNING -  * Debugger is active!
+2025-04-22 18:14:36,431 - werkzeug - INFO -  * Debugger PIN: 163-485-387
+2025-04-22 18:14:48,284 - services.indicator_service - INFO - AAPL 데이터를 새로 계산합니다.
+2025-04-22 18:14:48,284 - services.indicator_service - INFO - Alpha Vantage API 호출: AAPL
+2025-04-22 18:14:48,846 - werkzeug - INFO - 127.0.0.1 - - [22/Apr/2025 18:14:48] "POST /strategies HTTP/1.1" 200 -
+2025-04-22 18:15:26,064 - werkzeug - INFO -  * Detected change in '/Users/jeonghonoh/Documents/nomad/market_ninja/app.py', reloading
+2025-04-22 18:15:26,145 - werkzeug - INFO -  * Restarting with stat
+2025-04-22 18:15:26,633 - werkzeug - WARNING -  * Debugger is active!
+2025-04-22 18:15:26,638 - werkzeug - INFO -  * Debugger PIN: 163-485-387
+Traceback (most recent call last):
+  File "/Users/jeonghonoh/Documents/nomad/market_ninja/app.py", line 34, in <module>
+    app.run(host='0.0.0.0', port=port, debug=True)
+  File "/Users/jeonghonoh/Documents/nomad/market_ninja/venv/lib/python3.11/site-packages/flask/app.py", line 615, in run
+    run_simple(t.cast(str, host), port, self, **options)
+  File "/Users/jeonghonoh/Documents/nomad/market_ninja/venv/lib/python3.11/site-packages/werkzeug/serving.py", line 1115, in run_simple
+    run_with_reloader(
+  File "/Users/jeonghonoh/Documents/nomad/market_ninja/venv/lib/python3.11/site-packages/werkzeug/_reloader.py", line 459, in run_with_reloader
+    ensure_echo_on()
+  File "/Users/jeonghonoh/Documents/nomad/market_ninja/venv/lib/python3.11/site-packages/werkzeug/_reloader.py", line 439, in ensure_echo_on
+    termios.tcsetattr(sys.stdin, termios.TCSANOW, attributes)
+termios.error: (4, 'Interrupted system call')
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x0000000201ba8840 (most recent call first):
+  <no Python frame>

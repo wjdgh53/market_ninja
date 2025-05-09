@@ -5,50 +5,78 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 from config import ALPHA_VANTAGE_API_KEY, INDICATORS_TIMEFRAME
+import os
+import time
 
 # 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+
 logger = logging.getLogger(__name__)
 
-def get_historical_data(symbol: str, period: str = "1y") -> pd.DataFrame:
+def get_historical_data(symbol: str, period: str = "1y", refresh: bool = False, cache_expire_days: int = 1) -> pd.DataFrame:
     """
     Alpha Vantage API를 사용하여 주식의 역사적 데이터를 가져옵니다.
-    
+    (파일 캐시: data_cache/{symbol}_{period}.csv, 1일 자동 만료 + refresh 옵션)
     Args:
         symbol (str): 주식 심볼(티커)
         period (str): 데이터 가져올 기간 (1d, 1w, 1m, 1y 등)
-        
+        refresh (bool): True면 무조건 새로 받아옴
+        cache_expire_days (int): 캐시 만료 일수(기본 1일)
     Returns:
         pd.DataFrame: 주가 데이터가 포함된 DataFrame
     """
     try:
+        cache_dir = "data_cache"
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_file = os.path.join(cache_dir, f"{symbol}_{period}.csv")
+
+        use_cache = False
+        if not refresh and os.path.exists(cache_file):
+            mtime = os.path.getmtime(cache_file)
+            age_days = (time.time() - mtime) / (60*60*24)
+            if age_days < cache_expire_days:
+                use_cache = True
+                logger.info(f"[CACHE VALID] {cache_file} (age: {age_days:.2f}일) → 캐시 사용")
+            else:
+                logger.info(f"[CACHE EXPIRED] {cache_file} (age: {age_days:.2f}일) → API 새로 호출")
+        elif refresh:
+            logger.info(f"[REFRESH] refresh=True로 API 새로 호출")
+        else:
+            logger.info(f"[CACHE MISS] {cache_file} 없음, API 호출 진행")
+
+        if use_cache:
+            try:
+                logger.info(f"[CACHE HIT] {cache_file}에서 데이터 읽기 시도")
+                df = pd.read_csv(cache_file, index_col=0, parse_dates=True)
+                logger.info(f"[CACHE READ] {cache_file} shape={df.shape}")
+                if not df.empty:
+                    logger.info(f"[CACHE RETURN] {symbol} {period} 데이터 반환 (행:{df.shape[0]})")
+                    return df
+                else:
+                    logger.warning(f"[CACHE EMPTY] {cache_file} 파일이 비어 있음")
+            except Exception as e:
+                logger.warning(f"[CACHE ERROR] 캐시 파일 읽기 실패: {cache_file} ({e})")
+
         # API 엔드포인트
         url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_VANTAGE_API_KEY}&outputsize=full'
-        
-        # API 호출
-        logger.info(f"Alpha Vantage API 호출: {symbol}")
+        logger.info(f"[API REQUEST] Alpha Vantage API 호출 시작: {symbol}")
         response = requests.get(url)
         data = response.json()
-        
-        # 데이터 검증
+        logger.info(f"[API RESPONSE] Alpha Vantage 응답 수신: {symbol}")
         if 'Time Series (Daily)' not in data:
             error_msg = data.get('Error Message', data.get('Information', 'Unknown error'))
-            logger.error(f"Alpha Vantage API 오류: {error_msg}")
+            logger.error(f"[API ERROR] Alpha Vantage API 오류: {error_msg}")
             return pd.DataFrame()
-            
-        # 데이터 변환
         time_series = data['Time Series (Daily)']
         df = pd.DataFrame.from_dict(time_series, orient='index')
-        
-        # 컬럼 이름 변경
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-        
-        # 데이터 타입 변환
         for col in df.columns:
             df[col] = pd.to_numeric(df[col])
-            
-        # 날짜 인덱스 설정
         df.index = pd.to_datetime(df.index)
-        
         # 기간에 따른 데이터 필터링
         if period == "1y" or period == "1년":
             cutoff_date = datetime.now() - pd.Timedelta(days=365)
@@ -61,16 +89,22 @@ def get_historical_data(symbol: str, period: str = "1y") -> pd.DataFrame:
         elif period == "1w" or period == "1주":
             cutoff_date = datetime.now() - pd.Timedelta(days=7)
         else:
-            # 기본값: 1년
             cutoff_date = datetime.now() - pd.Timedelta(days=365)
-        
         df = df[df.index >= cutoff_date]
-        
-        # 인덱스 기준 정렬
-        return df.sort_index()
-        
+        df = df.sort_index()
+        logger.info(f"[API DATA] {symbol} {period} 데이터 shape={df.shape}")
+        # 받아온 데이터가 있으면 파일로 저장
+        if not df.empty:
+            try:
+                df.to_csv(cache_file)
+                logger.info(f"[CACHE SAVE] API 데이터 캐시 저장 성공: {cache_file} (행:{df.shape[0]})")
+            except Exception as e:
+                logger.warning(f"[CACHE SAVE ERROR] 캐시 파일 저장 실패: {cache_file} ({e})")
+        else:
+            logger.warning(f"[API DATA EMPTY] {symbol} {period} 데이터가 비어 있음")
+        return df
     except Exception as e:
-        logger.error(f"주가 데이터 가져오기 실패 ({symbol}): {str(e)}")
+        logger.error(f"[FATAL] 주가 데이터 가져오기 실패 ({symbol}): {str(e)}")
         return pd.DataFrame()
 
 def calculate_technical_indicators(df: pd.DataFrame, symbol: str) -> Dict[str, Any]:
