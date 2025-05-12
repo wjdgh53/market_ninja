@@ -159,6 +159,10 @@ def calculate_technical_indicators(df: pd.DataFrame, symbol: str) -> Dict[str, A
         df['BB_Low'] = bb.bollinger_lband()
         df['BB_Width'] = (df['BB_High'] - df['BB_Low']) / df['Close']
         
+        # 볼린저 밴드 폭 로깅
+        logger.info(f"볼린저 밴드 폭 계산: 마지막 3개 값 = {df['BB_Width'].tail(3).tolist()}")
+        logger.info(f"볼린저 밴드 폭에 0 또는 NaN 값이 있는지: {(df['BB_Width'] <= 0).any() or df['BB_Width'].isna().any()}")
+        
         df['ATR'] = ta.volatility.AverageTrueRange(
             high=df['High'], low=df['Low'], close=df['Close']
         ).average_true_range()
@@ -182,6 +186,9 @@ def calculate_technical_indicators(df: pd.DataFrame, symbol: str) -> Dict[str, A
         latest = df.dropna().iloc[-1]
         result = latest.to_dict()
         
+        # BB_Width 값 로깅
+        logger.info(f"result 딕셔너리의 BB_Width 값: {result.get('BB_Width')}")
+        
         # 추가 정보
         result['symbol'] = symbol
         result['last_updated'] = datetime.now().isoformat()
@@ -192,8 +199,19 @@ def calculate_technical_indicators(df: pd.DataFrame, symbol: str) -> Dict[str, A
             if isinstance(value, float):
                 result[key] = round(value, 4)
         
+        # 볼린저 밴드 폭 추가 검사
+        if 'BB_Width' in result:
+            if result['BB_Width'] <= 0 or pd.isna(result['BB_Width']):
+                logger.warning(f"비정상적인 BB_Width 값 감지({result['BB_Width']}). 기본값 0.03으로 설정")
+                result['BB_Width'] = 0.03
+        else:
+            logger.warning(f"BB_Width 키가 result에 없음. 기본값 0.03으로 추가")
+            result['BB_Width'] = 0.03
+            
         # Key 이름 정리: 공백 → 언더스코어
-        result = {k.replace(' ', '_'): v for k, v in result.items()}
+        result = {k.replace(' ', '_').lower(): v for k, v in result.items()}
+        logger.info(f"bb_width가 result에 있는지: {'bb_width' in result}")
+        logger.info(f"최종 bb_width 값: {result.get('bb_width')}")
         
         return result
         

@@ -1,3 +1,14 @@
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.FileHandler("market_ninja.log"),
+        logging.StreamHandler()
+    ]
+)
+
 from flask import Flask
 from routes.strategy_routes import strategy_bp
 from routes.indicator_routes import indicator_bp
