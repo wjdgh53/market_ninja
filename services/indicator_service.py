@@ -209,7 +209,7 @@ def analyze_technical_indicators(symbol: str) -> Dict[str, Any]:
         symbol (str): 주식 심볼(티커)
         
     Returns:
-        Dict[str, Any]: 기술적 지표가 포함된 사전
+        Dict[str, Any]: 기술적 지표가 포함된 사전 임
     """
     try:
         # 1. 주가 데이터 가져오기
