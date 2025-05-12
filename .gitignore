@@ -38,7 +38,9 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
-
+# 캐시 파일
+data_cache/
+*.csv
 # Logs
 *.log
 logs/ 
